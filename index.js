@@ -152,7 +152,8 @@ Models: gemini-high (default), gemini-low, gemini-flash, claude-opus, claude-son
             const modelId = resolveModel(model);
             log(`[submit:${shortId}] model=${modelId} task=${taskName || task.substring(0, 50)}`);
 
-            const prompt = (taskName ? `# ${taskName}\n\n` : '') + SYSTEM_PROMPT + task;
+            const modelLabel = model || 'gemini-high';
+            const prompt = (taskName ? `# ${taskName}\n` : '') + `[Model: ${modelLabel}]\n\n` + SYSTEM_PROMPT + task;
             await sendMessage(cascadeId, prompt, modelId);
 
             // Start waiting in background (not awaited here!)
