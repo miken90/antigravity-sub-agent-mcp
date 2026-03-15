@@ -53,6 +53,8 @@ const SYSTEM_PROMPT = `You are an autonomous sub-agent executing a delegated tas
 5. Do NOT modify files outside the task scope unless explicitly asked.
 6. Prefer read-only operations (grep, view_file, list_dir) unless edits are required.
 7. Be concise. Only include information relevant to the task.
+8. NEVER spawn or delegate to other sub-agents. You must NOT call submit_agent, get_agent_results, or any MCP tool that creates child agents. Complete all work yourself.
+9. For reading files and searching code, use built-in tools directly (view_file, grep_search, list_dir, find_by_name). Do NOT delegate these to another agent.
 
 TASK:
 `;
@@ -113,13 +115,26 @@ function createServer() {
         'submit_agent',
         `Spawn an autonomous sub-agent in Antigravity IDE. Returns a taskId INSTANTLY (does NOT wait for completion).
 
-The sub-agent runs as a new Cascade conversation with full codebase access — it can read files, grep, run terminal commands, and edit files. It operates fully autonomously without asking questions.
+The sub-agent runs as a new Cascade conversation with full codebase access — it can read files, grep, run terminal commands, and edit files. It operates fully autonomously without asking questions. Each agent consumes significant resources (new conversation + model tokens), so only delegate tasks that provide real value.
 
 ALWAYS use this 2-step pattern:
   Step 1: Call submit_agent N times (each returns a taskId in ~1 second)
   Step 2: Call get_agent_results([taskId1, taskId2, ...]) to wait for ALL results at once
 
 All N agents run in parallel. Write self-contained prompts — the sub-agent has ZERO prior context.
+
+WHEN TO USE (high-value tasks):
+✅ Implement a scoped feature or bug fix (write code, run tests)
+✅ Research/summarize a module, architecture, or large codebase area
+✅ Run a build/test suite and report results
+✅ Generate boilerplate, migrations, or repetitive code
+✅ Perform multi-step analysis that requires reasoning
+
+WHEN NOT TO USE (do it yourself — faster & cheaper):
+❌ Read or view files (use view_file, grep_search, find_by_name directly)
+❌ Simple grep/search operations
+❌ Single-file edits that take < 30 seconds
+❌ Tasks that just collect information without transforming it
 
 Models: gemini-high (default), gemini-low, gemini-flash, claude-opus, claude-sonnet, gpt-120b.`,
         {
