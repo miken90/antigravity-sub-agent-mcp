@@ -15,14 +15,20 @@ import { configure, isConfigured, startCascade, sendMessage } from './lib/cascad
 import { smartWait } from './lib/completion-loop.js';
 import { autoDetect } from './lib/ls-detector.js';
 
+import { readFileSync } from 'node:fs';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 const log = (msg) => process.stderr.write(`[antigravity-sub-agent-mcp] ${msg}\n`);
 
 // ── Model aliases ─────────────────────────────────────────────────────────────
 // Maps friendly names → raw LS model IDs. Default is the IDE's own default.
 
-const DEFAULT_MODEL = 'MODEL_PLACEHOLDER_M37'; // Gemini 3.1 Pro (High)
+// @visibleForTesting
+export const DEFAULT_MODEL = 'MODEL_PLACEHOLDER_M37'; // Gemini 3.1 Pro (High)
 
-const MODEL_ALIASES = {
+// Built-in defaults — overridden by models.json if present
+const BUILTIN_ALIASES = {
     // Gemini
     'gemini-high': 'MODEL_PLACEHOLDER_M37',
     'gemini-low': 'MODEL_PLACEHOLDER_M36',
@@ -34,7 +40,25 @@ const MODEL_ALIASES = {
     'gpt-120b': 'MODEL_OPENAI_GPT_OSS_120B_MEDIUM',
 };
 
-function resolveModel(input) {
+// Load external model config if available (models.json in project root or MODEL_CONFIG_PATH env)
+function loadModelAliases() {
+    const configPath = process.env.MODEL_CONFIG_PATH
+        || resolve(dirname(fileURLToPath(import.meta.url)), 'models.json');
+    try {
+        const raw = readFileSync(configPath, 'utf-8');
+        const external = JSON.parse(raw);
+        log(`Loaded model aliases from ${configPath} (${Object.keys(external).length} entries)`);
+        return { ...BUILTIN_ALIASES, ...external }; // external overrides builtins
+    } catch {
+        return BUILTIN_ALIASES; // Fallback to hardcoded defaults
+    }
+}
+
+// @visibleForTesting
+export const MODEL_ALIASES = loadModelAliases();
+
+// @visibleForTesting
+export function resolveModel(input) {
     if (!input) return DEFAULT_MODEL;
     // Direct ID passthrough (starts with MODEL_)
     if (input.startsWith('MODEL_')) return input;
@@ -44,7 +68,8 @@ function resolveModel(input) {
 
 // ── System prompt ────────────────────────────────────────────────────────────
 
-const SYSTEM_PROMPT = `You are an autonomous sub-agent executing a delegated task. Follow these rules:
+// @visibleForTesting
+export const SYSTEM_PROMPT = `You are an autonomous sub-agent executing a delegated task. Follow these rules:
 
 1. COMPLETE the task fully without asking questions or requesting clarification.
 2. If anything is ambiguous, make the best reasonable choice and proceed.
@@ -109,6 +134,22 @@ function createServer() {
 
     const taskRegistry = new Map(); // taskId → { cascadeId, promise, result, status, taskName }
 
+    // SEC-8: Limit concurrent tasks to prevent LS resource exhaustion
+    const MAX_CONCURRENT_TASKS = 10;
+
+    // SEC-9: Cleanup orphaned tasks after 30 minutes
+    const TASK_TTL_MS = 30 * 60 * 1000;
+    const _cleanupInterval = setInterval(() => {
+        const now = Date.now();
+        for (const [id, entry] of taskRegistry) {
+            if (now - entry.startedAt > TASK_TTL_MS && entry.status !== 'running') {
+                taskRegistry.delete(id);
+                log(`[cleanup] Evicted orphaned task ${id} (age: ${Math.round((now - entry.startedAt) / 60000)}min)`);
+            }
+        }
+    }, 60000);
+    _cleanupInterval.unref(); // Don't keep process alive for cleanup
+
     // Tool: submit_agent (non-blocking — returns taskId immediately)
     server.tool(
         'submit_agent',
@@ -146,6 +187,15 @@ Models: gemini-high (default), gemini-low, gemini-flash, claude-opus, claude-son
         },
         async ({ taskName, task, model, timeout = 600, maxReplies = 3, workspace }) => {
             await ensureConfigured(workspace);
+
+            // SEC-8: Reject if too many concurrent tasks
+            const activeTasks = [...taskRegistry.values()].filter(e => e.status === 'running').length;
+            if (activeTasks >= MAX_CONCURRENT_TASKS) {
+                return {
+                    content: [{ type: 'text', text: `Error: Max ${MAX_CONCURRENT_TASKS} concurrent tasks reached. Call get_agent_results first to collect finished tasks.` }],
+                    isError: true,
+                };
+            }
 
             const cascadeId = await startCascade();
             const shortId = cascadeId.substring(0, 8);
@@ -266,6 +316,17 @@ async function main() {
     const server = createServer();
     const transport = new StdioServerTransport();
     await server.connect(transport);
+
+    // Graceful shutdown — log active tasks and exit cleanly
+    const shutdown = (signal) => {
+        log(`Received ${signal}. Shutting down...`);
+        try {
+            server.close?.();
+        } catch { /* ignore */ }
+        process.exit(0);
+    };
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
 main().catch((e) => {
