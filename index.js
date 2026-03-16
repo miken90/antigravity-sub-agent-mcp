@@ -112,15 +112,15 @@ function createServer() {
     // Tool: submit_agent (non-blocking — returns taskId immediately)
     server.tool(
         'submit_agent',
-        `Spawn an autonomous sub-agent in Antigravity IDE. Returns a taskId INSTANTLY (does NOT wait for completion).
+        `Spawn an autonomous agent in Antigravity IDE. Returns a taskId INSTANTLY (does NOT wait for completion).
 
-The sub-agent runs as a new Cascade conversation with full codebase access — it can read files, grep, run terminal commands, and edit files. It operates fully autonomously without asking questions. Each agent consumes significant resources (new conversation + model tokens), so only delegate tasks that provide real value.
+The agent runs as a new Cascade conversation with full codebase access — it can read files, grep, run terminal commands, and edit files. It operates fully autonomously without asking questions. Each agent consumes significant resources (new conversation + model tokens), so only delegate tasks that provide real value.
 
 ALWAYS use this 2-step pattern:
   Step 1: Call submit_agent N times (each returns a taskId in ~1 second)
   Step 2: Call get_agent_results([taskId1, taskId2, ...]) to wait for ALL results at once
 
-All N agents run in parallel. Write self-contained prompts — the sub-agent has ZERO prior context.
+All N agents run in parallel. Write self-contained prompts — the agent has ZERO prior context.
 
 WHEN TO USE (high-value tasks):
 ✅ Implement a scoped feature or bug fix (write code, run tests)
@@ -130,7 +130,7 @@ WHEN TO USE (high-value tasks):
 ✅ Perform multi-step analysis that requires reasoning
 
 WHEN NOT TO USE (do it yourself — faster & cheaper):
-❌ Read or view files (use view_file, grep_search, find_by_name directly)
+❌ Read or view files
 ❌ Simple grep/search operations
 ❌ Single-file edits that take < 30 seconds
 ❌ Tasks that just collect information without transforming it
@@ -207,7 +207,8 @@ Models: gemini-high (default), gemini-low, gemini-flash, claude-opus, claude-son
         'get_agent_results',
         `Collect results from submit_agent calls. Blocks until ALL tasks finish, then returns all results together.
 
-Call this AFTER submitting all tasks via submit_agent. Pass the taskIds you received.`,
+Call this AFTER submitting all tasks via submit_agent. Pass the taskIds you received.
+Note: Sometimes agents may not finish within the timeout period. In such cases, the result will be returned as is, and you may need to manually check the status of the task in the Antigravity IDE.`,
         {
             taskIds: z.array(z.string()).describe('Array of taskIds from submit_agent calls'),
         },
