@@ -51,8 +51,14 @@ docs/             → Internal architecture documentation
 ### Dependencies
 
 - **Minimal**: Only 3 runtime dependencies
-- **No dev dependencies** — no test framework, linter, or formatter configured
+- **Dev dependencies**: Uses `vitest` for the test suite
 - **No `.proto` files** — protobuf encoding/decoding done with hand-written field maps
+
+### Testing Conventions
+
+- Entire test suite is written using `vitest`
+- Tests are colocated in the `tests/` directory alongside source definitions
+- Coverage spans components like model resolution, LS detection, client logic, polling, and protobuf encoding
 
 ### Code Style
 
@@ -87,5 +93,5 @@ Cascade statuses follow a state machine:
 Multiple fallback strategies used throughout:
 1. **Detection**: PPID → process scan + workspace match → first valid instance
 2. **API**: JSON → binary protobuf (for step pagination)
-3. **File paths**: `codeAction.targetFile` → `metadata.toolCall.argumentsJson` → binary field extraction
-4. **Auto-accept**: Typed interaction → generic accept → question auto-reply
+3. **File paths**: JSON field extraction → `metadata.toolCall.argumentsJson` → aggressive binary field extraction
+4. **Auto-accept**: Typed interaction payload → generic accept → question auto-reply

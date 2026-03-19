@@ -16,7 +16,7 @@ Binary protobuf requests (`Content-Type: application/proto`) correctly respect p
 
 ## Decoding
 
-`decodeBinarySteps(buf)` decodes the response into JSON-compatible step objects using hand-written field maps (no `.proto` file needed).
+`decodeBinarySteps(buf)` decodes the response into JSON-compatible step objects using hand-written field maps (no `.proto` file needed). This removes external dependencies and ensures stability.
 
 ### Enum Maps
 

@@ -45,7 +45,7 @@ A **stdio MCP server** that:
 
 ## Success Metrics
 
-- Sub-agent spawns in < 2s (cascade creation + message send)
+- Sub-agent spawns instantly in ~1s (non-blocking cascade creation)
 - Auto-accept handles all known step types without manual intervention
 - Parallel tasks (N agents) complete in ~1× single-agent time (true parallelism)
 - Stall detection catches stuck cascades within 60s

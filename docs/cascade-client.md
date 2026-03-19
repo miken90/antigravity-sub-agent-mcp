@@ -56,9 +56,10 @@ Sends a typed interaction payload via fire-and-forget `HandleCascadeUserInteract
 
 Simple generic accept (legacy). Used as last-resort fallback.
 
-### `autoDetectConfig(deckUrl?) → config | null`
+### `autoDetectConfig(workspace?) → config | null`
 
-Fetches LS config from Antigravity Deck's `/api/instances` endpoint. Returns `{ port, csrfToken, useTls }` or null.
+Uses `lib/ls-detector.js` to find the Language Server with a multi-priority strategy: 1) PPID detection, 2) Workspace match, 3) First valid instance.
+Returns `{ port, csrfToken, useTls }` or null.
 
 ## Transport Methods
 

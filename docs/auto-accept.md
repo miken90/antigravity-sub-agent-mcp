@@ -6,7 +6,11 @@ When Antigravity IDE's sub-agent executes tool calls (run a command, write a fil
 
 ## Solution
 
-`lib/auto-accept.js` detects WAITING steps and builds the correct interaction payload for each step type, then sends it via `HandleCascadeUserInteraction`.
+`lib/auto-accept.js` detects WAITING steps and builds the correct interaction payload for 10+ step types including file actions, then sends it via `HandleCascadeUserInteraction` using a security blocklist to prevent destructive commands.
+
+## Security Blocklist
+
+Dangerous commands like `rm -rf`, `format`, or unintended destructive system calls requested by the agent are caught by an internal blocklist and safely skipped or blocked.
 
 ## Step Type Handling
 

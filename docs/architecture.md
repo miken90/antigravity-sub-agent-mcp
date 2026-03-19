@@ -1,8 +1,10 @@
-# Architecture
+# Architecture (DEPRECATED)
+
+> **DEPRECATION NOTICE**: This file is outdated and kept for historical reference. Please see [`system-architecture.md`](system-architecture.md) for the current, accurate system architecture.
 
 ## Overview
 
-The Sub-Agent MCP Server acts as a bridge between a main AI agent (Claude, Gemini, etc.) and Antigravity IDE's Language Server (LS). It exposes a single MCP tool `start_agent` that creates a new cascade, sends a task, auto-accepts all tool actions, and returns the final result.
+The Sub-Agent MCP Server acts as a bridge between a main AI agent (Claude, Gemini, etc.) and Antigravity IDE's Language Server (LS). It exposes a 2-tool pattern (`submit_agent` and `get_agent_results`) that creates a new cascade, sends a task, auto-accepts all tool actions, and returns the final result.
 
 ## System Diagram
 
@@ -27,8 +29,8 @@ The Sub-Agent MCP Server acts as a bridge between a main AI agent (Claude, Gemin
 
 ## Request Flow
 
-1. Main agent calls `start_agent({ task: "..." })`
-2. `index.js` auto-detects LS config via Antigravity Deck (`localhost:9807`)
+1. Main agent calls `submit_agent({ task: "...", ... })` and gets a `taskId`
+2. `index.js` auto-detects LS config via PPID or process scan (fallback to workspace path matching)
 3. Creates a new cascade via `StartCascade` RPC
 4. Sends system prompt + task via `SendUserCascadeMessage` (streaming RPC)
 5. `completion-loop.js` polls `GetAllCascadeTrajectories` every 1.5s

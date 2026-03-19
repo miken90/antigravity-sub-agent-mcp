@@ -41,10 +41,10 @@ Core functionality complete. 2 MCP tools (`submit_agent`, `get_agent_results`), 
 - Generate `.d.ts` declarations for library consumers
 - JSDoc comments on all public APIs
 
-### 2.4 Test Suite
+### 2.4 Test Suite (Completed)
 - Unit tests for `buildInteraction()`, `protobuf` encode/decode, `pathToWorkspaceId()`
-- Integration tests with mock LS API
-- Add `vitest` or `node:test` as dev dependency
+- Integrated `vitest` as the primary dev dependency
+- Mock LS API endpoints for integration testing
 
 ---
 

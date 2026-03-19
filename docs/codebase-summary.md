@@ -5,9 +5,10 @@
 | Metric | Value |
 |---|---|
 | Language | JavaScript (ESM) |
-| Total Source Files | 6 |
-| Total LOC (source) | ~1,317 |
-| Dependencies | 3 (`@modelcontextprotocol/sdk`, `protobufjs`, `zod`) |
+| Total Source Files | 11 (5 lib, 1 index, 6 tests) |
+| Total LOC (source) | ~1,745 (lib + index) |
+| Tests LOC | 864 |
+| Dependencies | 3 (`@modelcontextprotocol/sdk`, `protobufjs`, `zod`). DevDeps: 1 (`vitest`) |
 | MCP Tools | 2 (`submit_agent`, `get_agent_results`) |
 | License | MIT |
 
@@ -15,13 +16,14 @@
 
 ```
 antigravity-sub-agent-mcp/          (root)
-├── index.js               275 LOC  MCP server, tool definitions, model aliases
+├── index.js               338 LOC  MCP server, tool definitions, task registry
 ├── lib/
-│   ├── ls-detector.js     278 LOC  LS process discovery (PPID + scan + port probe)
-│   ├── auto-accept.js     277 LOC  WAITING step detection + interaction payloads
+│   ├── ls-detector.js     284 LOC  LS process discovery (PPID + workspace match)
+│   ├── auto-accept.js     297 LOC  WAITING step detection + interaction payloads
 │   ├── protobuf.js        294 LOC  Binary protobuf encode/decode with field maps
-│   ├── completion-loop.js 252 LOC  Poll orchestration, stall detection, result extraction
-│   └── cascade-client.js  241 LOC  HTTP client (JSON, streaming, binary, fire-and-forget)
+│   ├── completion-loop.js 274 LOC  Adaptive polling, stall detection, result extraction
+│   └── cascade-client.js  258 LOC  HTTP client (JSON, streaming, binary, TLS handling)
+├── tests/                 864 LOC  Test suite focusing on components and behaviors
 ├── docs/                           Internal architecture documentation
 │   ├── architecture.md             System diagram + request flow
 │   ├── auto-accept.md             Step type handling details
@@ -40,8 +42,8 @@ antigravity-sub-agent-mcp/          (root)
 ### `index.js` — MCP Server Entry Point
 - Creates `McpServer` instance with stdio transport
 - Registers 2 tools: `submit_agent` (non-blocking) and `get_agent_results` (batch wait)
-- Manages in-memory task registry (`Map<taskId, {cascadeId, promise, result, status}>`)
-- Resolves model aliases (e.g., `gemini-high` → `MODEL_PLACEHOLDER_M37`)
+- Manages Map-based task registry with 30-minute TTL cleanup
+- Resolves model aliases (e.g., `gemini-high`, `gpt-120b`)
 - Injects system prompt forbidding recursive sub-agent spawning
 
 ### `lib/ls-detector.js` — Language Server Discovery
@@ -78,14 +80,22 @@ antigravity-sub-agent-mcp/          (root)
 - Generic decoder with string-vs-nested heuristic (>90% printable bytes = string)
 - Workaround for LS `startIndex` bug via `detectApiStartIndex()`
 
+## Test Suite Overview
+- `index.test.js`: Model resolution, constraints
+- `ls-detector.test.js`: Process parsing, workspace mapping
+- `cascade-client.test.js`: Config persistence, TLS defaults
+- `completion-loop.test.js`: Status heuristics
+- `auto-accept.test.js`: Payload building, blocklist
+- `protobuf.test.js`: Varint encoding, request serialization
+
 ## Data Flow
 
 ```
 Main Agent → [MCP stdio] → index.js
   → ls-detector.js → auto-detect LS port + CSRF
   → cascade-client.js → StartCascade + SendUserCascadeMessage
-  → completion-loop.js → poll getStatus() every 2s
+  → completion-loop.js → adaptive polling
     → auto-accept.js → handle WAITING steps
       → protobuf.js → binary fallback if JSON API fails
-  → extract result → [MCP stdio] → Main Agent
+  → extract result → task registry → [MCP stdio] → Main Agent
 ```

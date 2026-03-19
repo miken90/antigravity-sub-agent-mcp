@@ -18,10 +18,10 @@ npm install
 
 ### Option 1: Auto-Detection (Recommended)
 
-No configuration needed. The server auto-detects the Language Server via:
-1. **PPID detection** — Parent process is the LS (when spawned as MCP)
-2. **Process scan** — Scans OS processes for `language_server`
-3. **First valid instance** — Falls back to whatever LS is running
+No configuration needed. The server auto-detects the Language Server via `lib/ls-detector.js` using a 3-tier strategy:
+1. **PPID detection** — Checks parent process command line (primary method when spawned as MCP)
+2. **Workspace match** — Scans OS processes and matches the target workspace
+3. **First valid instance** — Falls back to the first available running LS
 
 ### Option 2: Environment Variables
 
@@ -86,14 +86,12 @@ All logs go to **stderr** (visible in Antigravity's MCP output panel):
 ## Platform Notes
 
 ### Windows
-- Uses PowerShell to detect LS processes (`Get-CimInstance Win32_Process`)
-- Uses `netstat -ano` for port detection
-- Uses `wmic` for PPID command line reading
+- Uses PowerShell to detect LS processes
+- Reads command-line args to extract workspace paths and CSRF tokens
 
 ### macOS / Linux
-- Uses `ps aux | grep language_server` for process detection
-- Uses `lsof -iTCP -sTCP:LISTEN` for port detection
-- Uses `ps -p <PID> -o command=` for PPID command line reading
+- Uses `ps aux` and `ps -p` for process detection
+- Extracts workspace paths and CSRF tokens from command arguments
 
 ## Production Considerations
 

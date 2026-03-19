@@ -22,7 +22,7 @@ The Antigravity Sub-Agent MCP Server is a **stdio-based MCP server** that bridge
 │           │                         │                               │
 │  ┌────────▼─────────────────────────▼───────────────────┐           │
 │  │         Task Registry (Map<taskId, Entry>)           │           │
-│  │         In-memory, per-server-instance               │           │
+│  │         In-memory, 30-minute TTL cleanup             │           │
 │  └──────────────────────┬───────────────────────────────┘           │
 └─────────────────────────┼───────────────────────────────────────────┘
                           │
@@ -143,3 +143,4 @@ get_agent_results([taskId1, taskId2, ...])
 - **Localhost only**: All communication is `127.0.0.1` / `localhost`
 - **No external network**: Server makes zero outbound internet requests
 - **Sub-agent sandboxing**: System prompt constrains behavior; auto-accept grants full local access by design
+- **Security Blocklist**: Dangerous commands (e.g., `rm -rf`, `format`) are blocked by the auto-accept logic
